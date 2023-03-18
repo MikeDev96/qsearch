@@ -120,8 +120,7 @@ function App() {
                       <TorrentTitle title={row.title} />
                       {isStar(row) && <span style={{ userSelect: "none" }}>⭐</span>}
                     </TableCell>
-                    {/* <TableCell align="right">{filesize(row.size)}</TableCell> */}
-                    <TableCell align="right">{row.size}</TableCell>
+                    <TableCell align="right">{filesize(row.size)}</TableCell>
                     <TableCell align="right">{row.seeders}</TableCell>
                     <TableCell align='center'>
                       <DownloadButton data={row} progress={dl[row.hash] || row.progress} onDownload={download} />
