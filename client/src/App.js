@@ -21,37 +21,48 @@ const { signal } = controller;
 
 function App() {
   const [searchParams, setSearchParams] = useSearchParams()
-  // const setSearchParamsRef = useRef(setSearchParams)
 
-  const [query] = useState(searchParams.get("query") ?? "")
-  const [query2, setQuery2] = useState(query)
+  const [query, setQuery] = useState(searchParams.get("query") ?? "")
   const [data, setData] = useState([])
-  const [loading, setLoading] = useState(false)
-  const [loading2, setLoading2] = useState(false)
-  const [test, setTest] = useState(null)
-  const [id, setId] = useState(searchParams.get("id") ?? "")
+  const [imdbLoading, setImdbLoading] = useState(false)
+  const [torrentLoading, setTorrentLoading] = useState(false)
+  const [imdb, setImdb] = useState(null)
+  const [imdbId, setImdbId] = useState(searchParams.get("id") ?? "")
+  const [imdbResults, setImdbResults] = useState([])
 
   const { progressMap: dl, download } = useDownloadManager(data, setData)
 
+  const searchImdb = useCallback((q) => {
+    if (q) {
+      setImdbLoading(true)
+      fetch(`api/imdb?q=${encodeURIComponent(q)}`, { signal })
+        .then(res => res.json())
+        .then(setImdbResults)
+        .finally(() => setImdbLoading(false))
+    }
+  }, [])
+
+  const inputRef = useRef()
+  const { current: searchImdbDebounced } = useRef(debounce(searchImdb, 500))
+
   useEffect(() => {
-    setSearchParams({ id, query: query2 }, { replace: true })
-  }, [id, query2, setSearchParams])
+    setSearchParams({ id: imdbId, query: query }, { replace: true })
+  }, [imdbId, query, setSearchParams])
 
   useEffect(() => {
     setData([])
 
-    if (!id) return
+    if (!imdbId) return
 
-    setLoading2(true)
-    fetch(`api/search?query=${encodeURIComponent(id)}`)
+    setTorrentLoading(true)
+    fetch(`api/search?query=${encodeURIComponent(imdbId)}`)
       .then(res => {
         if (res.ok) {
           res.json().then(data => {
             setData(data.sort((a, b) => (isStar(b) | 0) - (isStar(a) | 0)))
-            const lul = data.find(item => item.id === id)
-            console.log(data, lul, id)
-            if (lul) {
-              setTest(lul)
+            const imdb = data.find(item => item.id === imdbId)
+            if (imdb) {
+              setImdb(imdb)
             }
           })
         }
@@ -62,38 +73,18 @@ function App() {
       .catch(err => {
         console.log(err)
       })
-      .finally(() => setLoading2(false))
-  }, [id])
-
-  const [imdbResults, setImdbResults] = useState([])
-
-  const hmm = useCallback((q) => {
-    if (!q) {
-      console.log("fire1")
-      // setImdbResults([])
-    }
-    else {
-      setLoading(true)
-      fetch(`api/imdb?q=${encodeURIComponent(q)}`, { signal })
-        .then(res => res.json())
-        .then(setImdbResults)
-        .finally(() => setLoading(false))
-    }
-  }, [])
-
-  const testy = useRef(debounce(hmm, 500))
+      .finally(() => setTorrentLoading(false))
+  }, [imdbId])
 
   useEffect(() => {
-    if (!query2) {
-      testy.current.clear()
+    if (!query) {
+      searchImdbDebounced.clear()
       setImdbResults([])
     }
     else {
-      testy.current(query2)
+      searchImdbDebounced(query)
     }
-  }, [query2])
-
-  const inputRef = useRef()
+  }, [query, searchImdbDebounced])
 
   useEffect(() => {
     inputRef.current.focus()
@@ -116,7 +107,6 @@ function App() {
             <SearchIcon />
           </Avatar>
           <Typography component="h1" variant="h5">qSearch</Typography>
-
           <Autocomplete
             fullWidth
             options={imdbResults}
@@ -124,21 +114,19 @@ function App() {
             filterOptions={(x) => x}
             isOptionEqualToValue={(option, value) => option.id === value.id}
             filterSelectedOptions
-            value={test}
+            value={imdb}
             noOptionsText="No results..."
             getOptionLabel={option => option.l ?? ""}
             onChange={(event, newValue) => {
-              setTest(newValue)
-              setId(newValue?.id ?? "")
+              setImdb(newValue)
+              setImdbId(newValue?.id ?? "")
             }}
             onInputChange={(event, newInputValue) => {
-              console.log("set to", newInputValue, event?.type, event)
               if (event?.type === "change") {
-                console.log("wtf")
-                setQuery2(newInputValue)
+                setQuery(newInputValue)
               }
             }}
-            inputValue={query2}
+            inputValue={query}
             blurOnSelect
             renderInput={(params) =>
               <TextField
@@ -150,7 +138,7 @@ function App() {
                   ...params.InputProps,
                   endAdornment: (
                     <Fragment>
-                      {loading ? <CircularProgress color="inherit" size={20} /> : null}
+                      {imdbLoading ? <CircularProgress color="inherit" size={20} /> : null}
                       {params.InputProps.endAdornment}
                     </Fragment>
                   ),
@@ -186,7 +174,7 @@ function App() {
               )
             }}
           />
-          {loading2 && <CircularProgress color="inherit" sx={{ marginTop: 2 }} />}
+          {torrentLoading && <CircularProgress color="inherit" sx={{ marginTop: 2 }} />}
           {!!data.length && <TorrentsView torrents={data} dl={dl} onDownload={download} />}
         </Box>
       </Container>
