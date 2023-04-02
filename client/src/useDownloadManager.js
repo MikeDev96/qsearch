@@ -41,13 +41,15 @@ const useDownloadManager = (torrents, setTorrents) => {
     fetch(`api/download?magnet=${encodeURIComponent(torrent.download)}`, { method: "POST" })
       .then(res => {
         if (res.ok) {
-          setTorrents(tors => {
-            const idx = tors.findIndex(tor => tor.hash === torrent.hash)
-            return [
-              ...tors.slice(0, idx),
-              { ...tors[idx], progress: 0 },
-              ...tors.slice(idx + 1),
-            ]
+          res.json().then(data => {
+            setTorrents(tors => {
+              const idx = tors.findIndex(tor => tor.download === torrent.download)
+              return [
+                ...tors.slice(0, idx),
+                { ...tors[idx], hash: data.hash, progress: 0 },
+                ...tors.slice(idx + 1),
+              ]
+            })
           })
           // getProgress()
         }

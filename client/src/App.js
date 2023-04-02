@@ -2,17 +2,13 @@ import '@fontsource/roboto/300.css';
 import '@fontsource/roboto/400.css';
 import '@fontsource/roboto/500.css';
 import '@fontsource/roboto/700.css';
-import { Avatar, Box, CircularProgress, Container, createTheme, CssBaseline, IconButton, InputAdornment, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField, ThemeProvider, Typography } from '@mui/material';
+import { Autocomplete, Avatar, Box, CircularProgress, Container, createTheme, CssBaseline, debounce, Grid, TextField, ThemeProvider, Typography } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
-import StarIcon from '@mui/icons-material/Star';
-import ClearIcon from '@mui/icons-material/Clear';
-import { useEffect, useRef, useState } from 'react';
-import DownloadButton from './DownloadButton';
-import { filesize } from "filesize";
+import { Fragment, useCallback, useEffect, useRef, useState } from 'react';
 import useDownloadManager from './useDownloadManager';
 import { useSearchParams } from 'react-router-dom';
-import { deviceType } from 'detect-it';
-import TorrentTitle from './TorrentTitle';
+import TorrentsView from './TorrentsView';
+import { isStar } from './TorrentStar';
 
 const darkTheme = createTheme({
   palette: {
@@ -20,31 +16,88 @@ const darkTheme = createTheme({
   },
 });
 
+const controller = new AbortController();
+const { signal } = controller;
+
 function App() {
   const [searchParams, setSearchParams] = useSearchParams()
-  const setSearchParamsRef = useRef(setSearchParams)
+  // const setSearchParamsRef = useRef(setSearchParams)
 
-  const [query, setQuery] = useState(searchParams.get("query") ?? "")
+  const [query] = useState(searchParams.get("query") ?? "")
   const [query2, setQuery2] = useState(query)
   const [data, setData] = useState([])
   const [loading, setLoading] = useState(false)
+  const [loading2, setLoading2] = useState(false)
+  const [test, setTest] = useState(null)
+  const [id, setId] = useState(searchParams.get("id") ?? "")
 
   const { progressMap: dl, download } = useDownloadManager(data, setData)
 
   useEffect(() => {
-    setSearchParamsRef.current({ query })
+    setSearchParams({ id, query: query2 }, { replace: true })
+  }, [id, query2, setSearchParams])
+
+  useEffect(() => {
     setData([])
 
-    if (!query) return
+    if (!id) return
 
-    setLoading(true)
-    fetch(`api/search?query=${encodeURIComponent(query)}`)
-      .then(res => res.json())
+    setLoading2(true)
+    fetch(`api/search?query=${encodeURIComponent(id)}`)
       .then(res => {
-        setData(res.sort((a,b) => (isStar(b) | 0) - (isStar(a) | 0)))
+        if (res.ok) {
+          res.json().then(data => {
+            setData(data.sort((a, b) => (isStar(b) | 0) - (isStar(a) | 0)))
+            const lul = data.find(item => item.id === id)
+            console.log(data, lul, id)
+            if (lul) {
+              setTest(lul)
+            }
+          })
+        }
+        else {
+          console.log(`${res.status} - ${res.statusText}`)
+        }
       })
-      .finally(() => setLoading(false))
-  }, [query])
+      .catch(err => {
+        console.log(err)
+      })
+      .finally(() => setLoading2(false))
+  }, [id])
+
+  const [imdbResults, setImdbResults] = useState([])
+
+  const hmm = useCallback((q) => {
+    if (!q) {
+      console.log("fire1")
+      // setImdbResults([])
+    }
+    else {
+      setLoading(true)
+      fetch(`api/imdb?q=${encodeURIComponent(q)}`, { signal })
+        .then(res => res.json())
+        .then(setImdbResults)
+        .finally(() => setLoading(false))
+    }
+  }, [])
+
+  const testy = useRef(debounce(hmm, 500))
+
+  useEffect(() => {
+    if (!query2) {
+      testy.current.clear()
+      setImdbResults([])
+    }
+    else {
+      testy.current(query2)
+    }
+  }, [query2])
+
+  const inputRef = useRef()
+
+  useEffect(() => {
+    inputRef.current.focus()
+  }, [])
 
   return (
     <ThemeProvider theme={darkTheme}>
@@ -53,6 +106,7 @@ function App() {
         <Box
           sx={{
             marginTop: 8,
+            marginBottom: 8,
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
@@ -62,80 +116,82 @@ function App() {
             <SearchIcon />
           </Avatar>
           <Typography component="h1" variant="h5">qSearch</Typography>
-          <TextField
-            margin="normal"
+
+          <Autocomplete
             fullWidth
-            id="query"
-            label="Query"
-            name="query"
-            autoFocus
-            onKeyDown={e => {
-              if (e.key === "Enter") {
-                setQuery(e.target.value)
-                if (deviceType === "touchOnly") {
-                  e.target.blur()
-                }
+            options={imdbResults}
+            autoComplete
+            filterOptions={(x) => x}
+            isOptionEqualToValue={(option, value) => option.id === value.id}
+            filterSelectedOptions
+            value={test}
+            noOptionsText="No results..."
+            getOptionLabel={option => option.l ?? ""}
+            onChange={(event, newValue) => {
+              setTest(newValue)
+              setId(newValue?.id ?? "")
+            }}
+            onInputChange={(event, newInputValue) => {
+              console.log("set to", newInputValue, event?.type, event)
+              if (event?.type === "change") {
+                console.log("wtf")
+                setQuery2(newInputValue)
               }
             }}
-            // defaultValue={query}
-            value={query2}
-            onChange={e => setQuery2(e.target.value)}
-            InputProps={{
-              endAdornment: <InputAdornment position="end">
-                {loading && <CircularProgress />}
-                {!!query2 &&
-                  <IconButton
-                    onClick={e => {
-                      setQuery("")
-                      setQuery2("")
-                    }}
-                  >
-                    <ClearIcon />
-                  </IconButton>
-                }
-              </InputAdornment>,
+            inputValue={query2}
+            blurOnSelect
+            renderInput={(params) =>
+              <TextField
+                {...params}
+                margin="normal"
+                label="Search IMDb..."
+                fullWidth
+                InputProps={{
+                  ...params.InputProps,
+                  endAdornment: (
+                    <Fragment>
+                      {loading ? <CircularProgress color="inherit" size={20} /> : null}
+                      {params.InputProps.endAdornment}
+                    </Fragment>
+                  ),
+                }}
+                inputRef={inputRef}
+                autoComplete="off"
+                autoCapitalize="off"
+              />
+            }
+            renderOption={(props, option) => {
+              return (
+                <li {...props} key={option.id}>
+                  <Grid container alignItems="center">
+                    <Grid item sx={{ display: 'flex', width: 50 }}>
+                      <img loading="lazy" width={40} src={option.i?.imageUrl ?? ""} alt="" />
+                    </Grid>
+                    <Grid item sx={{ width: 'calc(100% - 50px)', wordWrap: 'break-word' }}>
+                      <Box
+                        component="span"
+                        sx={{ fontWeight: 'bold' }}
+                      >
+                        {option.l}
+                      </Box>
+                      <Typography variant="body2" color="text.secondary">
+                        {option.y}
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        {option.s}
+                      </Typography>
+                    </Grid>
+                  </Grid>
+                </li>
+              )
             }}
           />
-          <TableContainer component={Paper}>
-            <Table sx={{ minWidth: 650 }} aria-label="simple table">
-              <TableHead>
-                <TableRow>
-                  {/* <TableCell></TableCell> */}
-                  <TableCell>Title</TableCell>
-                  <TableCell align="right">Size</TableCell>
-                  <TableCell align="right">Seeders</TableCell>
-                  <TableCell></TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {data.map((row, idx) => (
-                  <TableRow
-                    key={idx}
-                    sx={{ '&:last-child td, &:last-child th': { border: 0 } }}
-                  >
-                    {/* <TableCell>
-                    </TableCell> */}
-                    <TableCell sx={{ wordBreak: "break-word" }}>
-                      {/* {isStar(row) && <StarIcon sx={{ margin: "-8px 8px -8px -8px", color: 'gold' }} />} */}
-                      <TorrentTitle title={row.title} />
-                      {isStar(row) && <span style={{ userSelect: "none" }}>⭐</span>}
-                    </TableCell>
-                    <TableCell align="right">{filesize(row.size)}</TableCell>
-                    <TableCell align="right">{row.seeders}</TableCell>
-                    <TableCell align='center'>
-                      <DownloadButton data={row} progress={dl[row.hash] || row.progress} onDownload={download} />
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
+          {loading2 && <CircularProgress color="inherit" sx={{ marginTop: 2 }} />}
+          {!!data.length && <TorrentsView torrents={data} dl={dl} onDownload={download} />}
         </Box>
       </Container>
     </ThemeProvider>
-  );
+  )
 }
 
-const isStar = data => data.title.endsWith("x265-RARBG")
-
-export default App;
+export default App
