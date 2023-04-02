@@ -6,8 +6,12 @@ import fetch from "node-fetch"
 let hashMap
 let rookie = ""
 
-if (fs.existsSync("rarbg-hash-map.json")) {
-  hashMap = JSON.parse(fs.readFileSync("rarbg-hash-map.json"))
+if (!fs.existsSync("cache")) {
+  fs.mkdirSync("cache")
+}
+
+if (fs.existsSync("cache/rarbg-hash-map.json")) {
+  hashMap = JSON.parse(fs.readFileSync("cache/rarbg-hash-map.json"))
 }
 else {
   hashMap = {}
@@ -15,14 +19,14 @@ else {
 
 export const getRookie = async () => {
   if (!rookie) {
-    if (fs.existsSync("rookie.txt")) {
-      rookie = fs.readFileSync("rookie.txt", { encoding: "utf8" })
+    if (fs.existsSync("cache/rookie.txt")) {
+      rookie = fs.readFileSync("cache/rookie.txt", { encoding: "utf8" })
     }
   }
 
   if (!rookie) {
     rookie = await getRarbgCookie()
-    fs.writeFileSync("rookie.txt", rookie, { encoding: "utf8" })
+    fs.writeFileSync("cache/rookie.txt", rookie, { encoding: "utf8" })
   }
 
   return rookie
@@ -79,7 +83,7 @@ export const getMagnetLink = async torrentId => {
     const { groups: { magnet, hash } } = match
 
     hashMap[getRarbgId(torrentId)] = hash
-    fs.writeFileSync("rarbg-hash-map.json", JSON.stringify(hashMap, null, 2))
+    fs.writeFileSync("cache/rarbg-hash-map.json", JSON.stringify(hashMap, null, 2))
 
     return { magnet, hash }
   }
@@ -102,7 +106,7 @@ export const searchTorrents = async query => {
 
     if (res.url.includes("threat_defence.php")) {
       rookie = ""
-      fs.writeFileSync("rookie.txt", rookie, { encoding: "utf8" })
+      fs.writeFileSync("cache/rookie.txt", rookie, { encoding: "utf8" })
       return await searchTorrents(query)
     }
 

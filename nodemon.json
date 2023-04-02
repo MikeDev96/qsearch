@@ -1,6 +1,6 @@
 {
   "ignore": [
-    "rarbg-hash-map.json",
+    "./cache",
     "./client"
   ]
 }
