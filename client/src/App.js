@@ -42,7 +42,6 @@ function App() {
     }
   }, [])
 
-  const inputRef = useRef()
   const { current: searchImdbDebounced } = useRef(debounce(searchImdb, 500))
 
   useEffect(() => {
@@ -86,12 +85,6 @@ function App() {
     }
   }, [query, searchImdbDebounced])
 
-  useEffect(() => {
-    setTimeout(() => {
-      inputRef.current.focus()
-    }, 100)
-  }, [])
-
   return (
     <ThemeProvider theme={darkTheme}>
       <CssBaseline />
@@ -133,6 +126,7 @@ function App() {
             renderInput={(params) =>
               <TextField
                 {...params}
+                autoFocus
                 margin="normal"
                 label="Search IMDb..."
                 fullWidth
@@ -145,7 +139,6 @@ function App() {
                     </Fragment>
                   ),
                 }}
-                inputRef={inputRef}
                 autoComplete="off"
                 autoCapitalize="off"
               />
