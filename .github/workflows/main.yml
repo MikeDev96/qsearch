@@ -1,0 +1,20 @@
+name: CI-CD
+
+on:
+  push:
+    branches: [ master ]
+
+jobs:
+  deployment:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy
+        if: github.repository == 'MikeDev96/qsearch'
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          key: ${{ secrets.KEY }}
+          port: ${{ secrets.PORT }}
+          script: |
+            [ -d "/home/${{ secrets.USERNAME }}/apps/qsearch" ] && cd /home/${{ secrets.USERNAME }}/apps/qsearch && export NVM_DIR=~/.nvm && source ~/.nvm/nvm.sh && git pull && npm i && cd client && npm i && git reset --hard && npm run build && pm2 reload qsearch
