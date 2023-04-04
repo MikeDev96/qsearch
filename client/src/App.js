@@ -148,7 +148,7 @@ function App() {
                 <li {...props} key={option.id}>
                   <Grid container alignItems="center">
                     <Grid item sx={{ display: 'flex', width: 50 }}>
-                      <img loading="lazy" width={40} src={option.i?.imageUrl ?? ""} alt="" />
+                      <Box component="img" loading="lazy" width={40} src={option.i?.imageUrl ?? ""} alt="" sx={{ aspectRatio: "50 / 74", objectFit: "cover" }} />
                     </Grid>
                     <Grid item sx={{ width: 'calc(100% - 50px)', wordWrap: 'break-word' }}>
                       <Box
