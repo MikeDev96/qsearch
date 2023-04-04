@@ -95,7 +95,7 @@ export const getMagnetLink = async torrentId => {
 
 export const searchTorrents = async query => {
   try {
-    const res = await fetch(`https://rarbgto.org/torrents.php?search=${query}&category%5B%5D=54&category%5B%5D=41`, {
+    const res = await fetch(`https://rarbgto.org/torrents.php?search=${query}`, {
       headers: {
         "cookie": (await getRookie()),
         "user-agent": `Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/111.0.0.0 Safari/537.36`,
