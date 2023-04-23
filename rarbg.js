@@ -1,5 +1,5 @@
 import { chromium } from "playwright"
-import ReadText from "text-from-image"
+import { imageToText } from "./utils.js"
 import fs from "fs"
 import fetch from "node-fetch"
 
@@ -41,7 +41,7 @@ export const getRarbgCookie = async () => {
     await page.waitForSelector("input[name='solve_string']")
 
     const captchaBuffer = await page.screenshot({ clip: { x: 640, y: 168.65625, width: 160, height: 75 } })
-    const answer = (await ReadText(captchaBuffer)).trim()
+    const answer = (await imageToText(captchaBuffer)).trim()
 
     const el = await page.$("input[name='solve_string']")
     await el.type(answer)
